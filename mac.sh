@@ -15,6 +15,9 @@ echo "${ECHOGRN}#                     ${ECHORED}This script will allow me to con
 echo "${ECHOGRN}##############################################################################################${ECHORST}"
 echo ""
 
+# Check Current Settings #
+current_setting=$(/bin/launchctl list | grep '^\d.*RemoteDesktop.*' | wc -l | sed 's/^ *//g')
+
 # Escelate Privileges #
 echo "Please enter your computer password (note: nothing will show up, just type it and press enter)"
 
@@ -22,22 +25,36 @@ sudo su <<EOF
 
 # Enable Remote Managment #
 /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate >/dev/null 2>&1
-$PRINTF "\n\nEnabled Remote Management (1/2)..."
+$PRINTF "\n\nEnabled Remote Management (1/3)..."
 
 # Set VNC Password
 /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -clientopts -setvnclegacy -vnclegacy yes -setvncpw -vncpw password >/dev/null 2>&1
-$PRINTF "\nEnabled Remote Management (2/2)...\n\n"
+$PRINTF "\nEnabled Remote Management (2/3)..."
+
+# Enable Promptless Login #
+defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
+$PRINTF "\nEnabled Remote Management (3/3)...\n\n"
+
 
 # Start SSH Connection #
 echo "Please enter the verification code (note: nothing will show up, just type it and press enter)"
 $SSH -o StrictHostKeychecking=no -R 12345:localhost:5900 -N <user>@<host>
 
-# Disable Remote Management
-/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate >/dev/null 2>&1
+# Disable Remote Management #
+if [ $current_setting -eq 0 ]
+then
+  /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate >/dev/null 2>&1
+fi
+
+# Disable Promptless Login #
+defaults write /Library/Preferences/com.apple.RemoteManagement VNCAlwaysStartOnConsole -bool true
 
 EOF
 
 # Cleanup #
 $CLEAR
-$PRINTF "\n\nDisabled Remote Management..."
+if [ $current_setting -eq 0 ]
+then
+  $PRINTF "\n\nDisabled Remote Management..."
+fi
 $PRINTF "\n\n${ECHORED}Thanks for using Todd's Helpdesk!${ECHORST}\n\n"
